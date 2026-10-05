@@ -1,0 +1,14 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const assistanceController_js_1 = require("../controllers/assistanceController.js");
+const auth_js_1 = require("../middleware/auth.js");
+const router = (0, express_1.Router)();
+router.post('/', auth_js_1.authenticate, assistanceController_js_1.AssistanceController.create);
+router.get('/', auth_js_1.authenticate, assistanceController_js_1.AssistanceController.getAll);
+router.get('/:id', auth_js_1.authenticate, assistanceController_js_1.AssistanceController.getById);
+router.post('/:id/apply', auth_js_1.authenticate, assistanceController_js_1.AssistanceController.apply);
+router.post('/:id/select-contributor', auth_js_1.authenticate, assistanceController_js_1.AssistanceController.selectContributor);
+router.patch('/:id/status', auth_js_1.authenticate, assistanceController_js_1.AssistanceController.updateStatus);
+router.post('/:id/verify', auth_js_1.authenticate, assistanceController_js_1.AssistanceController.verify);
+exports.default = router;

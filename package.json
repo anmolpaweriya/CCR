@@ -1,0 +1,12 @@
+{
+  "name": "ccr-platform",
+  "version": "1.0.0",
+  "description": "CCR — Connect, Contribute, Receive: Hyperlocal Community Assistance and Resource Sharing Platform",
+  "scripts": {
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client run dev",
+    "build:server": "npm --prefix server run build",
+    "build:client": "npm --prefix client run build",
+    "seed": "npm --prefix server run seed"
+  }
+}

@@ -1,0 +1,14 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const resourceController_js_1 = require("../controllers/resourceController.js");
+const auth_js_1 = require("../middleware/auth.js");
+const router = (0, express_1.Router)();
+router.post('/', auth_js_1.authenticate, resourceController_js_1.ResourceController.create);
+router.get('/', auth_js_1.authenticate, resourceController_js_1.ResourceController.getAll);
+router.get('/:id', auth_js_1.authenticate, resourceController_js_1.ResourceController.getById);
+router.post('/:id/request', auth_js_1.authenticate, resourceController_js_1.ResourceController.requestResource);
+router.post('/requests/:requestId/decision', auth_js_1.authenticate, resourceController_js_1.ResourceController.handleRequestDecision);
+router.patch('/requests/:requestId/status', auth_js_1.authenticate, resourceController_js_1.ResourceController.updateRequestStatus);
+router.post('/requests/:requestId/verify-return', auth_js_1.authenticate, resourceController_js_1.ResourceController.verifyReturn);
+exports.default = router;

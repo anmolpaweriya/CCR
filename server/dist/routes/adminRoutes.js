@@ -1,0 +1,21 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const adminController_js_1 = require("../controllers/adminController.js");
+const auth_js_1 = require("../middleware/auth.js");
+const router = (0, express_1.Router)();
+// Protect all admin routes with authentication and ADMIN role check
+router.use(auth_js_1.authenticate, auth_js_1.requireAdmin);
+router.get('/stats', adminController_js_1.AdminController.getOverviewStats);
+router.get('/users', adminController_js_1.AdminController.getUsers);
+router.patch('/users/:id/suspend', adminController_js_1.AdminController.toggleSuspendUser);
+router.post('/users/:id/adjust-credits', adminController_js_1.AdminController.adjustCredits);
+router.get('/withdrawals', adminController_js_1.AdminController.getWithdrawals);
+router.patch('/withdrawals/:id', adminController_js_1.AdminController.handleWithdrawal);
+router.get('/requests', adminController_js_1.AdminController.getRequests);
+router.get('/resources', adminController_js_1.AdminController.getResources);
+router.get('/disputes', adminController_js_1.AdminController.getDisputes);
+router.patch('/disputes/:id', adminController_js_1.AdminController.resolveDispute);
+router.get('/audit-logs', adminController_js_1.AdminController.getAuditLogs);
+router.get('/goodwill-transactions', adminController_js_1.AdminController.getGoodwillTransactions);
+exports.default = router;
