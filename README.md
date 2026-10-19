@@ -216,3 +216,8 @@ The database is automatically pre-seeded with 21 users, 11 physical tools, and 1
 - Cryptographic QR code and OTP handshake for physical handovers.
 - Upgraded Machine Learning models for geospatial matching and dynamic valuation.
 - External payment gateway integration (Stripe / Razorpay).
+
+
+• 1-Day Rental: 3% to 6% of the item's retail value
+• 1-Week Rental: 8% to 12% of the item's retail value
+• 1-Month Rental: 18% to 22% of the item's retail value
