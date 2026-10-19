@@ -38,12 +38,17 @@ export const AdminPage: React.FC = () => {
   const { showToast } = useNotification();
 
   const [activeTab, setActiveTab] = useState<
-    'OVERVIEW' | 'USERS' | 'WITHDRAWALS' | 'DISPUTES' | 'AUDIT_LOGS' | 'GOODWILL'
+    'OVERVIEW' | 'USERS' | 'REQUESTS' | 'RESOURCES' | 'TRANSACTIONS' | 'WITHDRAWALS' | 'DISPUTES' | 'AUDIT_LOGS' | 'GOODWILL'
   >('OVERVIEW');
 
   const [stats, setStats] = useState<any>(null);
   const [chartData, setChartData] = useState<any[]>([]);
   const [usersList, setUsersList] = useState<any[]>([]);
+  const [adminRequests, setAdminRequests] = useState<any[]>([]);
+  const [adminResources, setAdminResources] = useState<any[]>([]);
+  const [adminBookings, setAdminBookings] = useState<any[]>([]);
+  const [adminTransactions, setAdminTransactions] = useState<any[]>([]);
+  const [adminPayments, setAdminPayments] = useState<any[]>([]);
   const [withdrawalsList, setWithdrawalsList] = useState<any[]>([]);
   const [disputesList, setDisputesList] = useState<any[]>([]);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
@@ -66,13 +71,18 @@ export const AdminPage: React.FC = () => {
   const loadAdminData = async () => {
     try {
       setLoading(true);
-      const [sRes, uRes, wRes, dRes, aRes, gRes] = await Promise.all([
+      const [sRes, uRes, wRes, dRes, aRes, gRes, reqRes, resRes, bookRes, txRes, payRes] = await Promise.all([
         api.admin.getStats(),
         api.admin.getUsers(),
         api.admin.getWithdrawals(),
         api.admin.getDisputes(),
         api.admin.getAuditLogs(),
         api.admin.getGoodwillTransactions(),
+        api.admin.getRequests().catch(() => ({ success: false, requests: [] })),
+        api.admin.getResources().catch(() => ({ success: false, resources: [] })),
+        api.admin.getResourceBookings().catch(() => ({ success: false, bookings: [] })),
+        api.admin.getAllTransactions().catch(() => ({ success: false, transactions: [] })),
+        api.admin.getPayments().catch(() => ({ success: false, payments: [] })),
       ]);
 
       if (sRes.success) {
@@ -84,6 +94,11 @@ export const AdminPage: React.FC = () => {
       if (dRes.success) setDisputesList(dRes.disputes || []);
       if (aRes.success) setAuditLogs(aRes.logs || []);
       if (gRes.success) setGoodwillTxs(gRes.transactions || []);
+      if (reqRes.success) setAdminRequests(reqRes.requests || []);
+      if (resRes.success) setAdminResources(resRes.resources || []);
+      if (bookRes.success) setAdminBookings(bookRes.bookings || []);
+      if (txRes.success) setAdminTransactions(txRes.transactions || []);
+      if (payRes.success) setAdminPayments(payRes.payments || []);
     } catch (error) {
       console.error('Failed to load admin data:', error);
     } finally {
@@ -212,6 +227,9 @@ export const AdminPage: React.FC = () => {
         {[
           { id: 'OVERVIEW', label: 'Overview & Charts' },
           { id: 'USERS', label: `Users (${usersList.length})` },
+          { id: 'REQUESTS', label: `Requests & Offers (${adminRequests.length})` },
+          { id: 'RESOURCES', label: `Resources & Bookings (${adminResources.length})` },
+          { id: 'TRANSACTIONS', label: `Ledger & Payments (${adminTransactions.length})` },
           { id: 'WITHDRAWALS', label: `Withdrawals (${withdrawalsList.length})` },
           { id: 'DISPUTES', label: `Disputes (${disputesList.length})` },
           { id: 'GOODWILL', label: `Goodwill Activity (${goodwillTxs.length})` },
@@ -573,7 +591,199 @@ export const AdminPage: React.FC = () => {
         </div>
       )}
 
-      {/* Modal: Adjust Credits */}
+      {/* Requests & Offers Tab */}
+      {activeTab === 'REQUESTS' && (
+        <div className="space-y-4">
+          <div className="text-xs text-slate-500">
+            Audit view of all Hyperlocal Assistance Requests, active volunteer offers, and contributor assignments.
+          </div>
+          <GlassCard className="p-0 overflow-hidden">
+            <div className="divide-y divide-slate-100">
+              {adminRequests.length === 0 ? (
+                <div className="p-8 text-center text-xs text-slate-400">No assistance requests found</div>
+              ) : (
+                adminRequests.map((req) => (
+                  <div key={req._id} className="p-4 text-xs space-y-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-900 text-sm">{req.title}</span>
+                          <Badge status={req.status} size="sm" />
+                          <span className="text-slate-400 font-medium">({req.category})</span>
+                        </div>
+                        <div className="text-slate-500 mt-0.5">
+                          Requester: <strong>{req.requester?.name || 'Unknown'}</strong> ({req.requester?.email}) •{' '}
+                          Value: <strong>{req.creditValue} {req.requestType === 'GOODWILL' ? 'Goodwill' : 'Cash'} Credits</strong>
+                        </div>
+                      </div>
+                      <div className="text-slate-500 text-right shrink-0">
+                        <div>Date: {req.preferredDate}</div>
+                        {req.preferredTimeWindow?.startTime && (
+                          <div className="text-[11px] text-emerald-600 font-medium">
+                            {req.preferredTimeWindow.startTime} – {req.preferredTimeWindow.endTime}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {req.selectedContributor && (
+                      <div className="bg-emerald-50 text-emerald-900 p-2 rounded-lg flex items-center justify-between">
+                        <span>Assigned Volunteer: <strong>{req.selectedContributor.name}</strong> ({req.selectedContributor.email})</span>
+                        <span className="font-semibold text-[11px]">Task Status: {req.status}</span>
+                      </div>
+                    )}
+
+                    {req.offers && req.offers.length > 0 && (
+                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 space-y-1.5">
+                        <span className="font-semibold text-slate-700 block">Volunteer Offers ({req.offers.length}):</span>
+                        {req.offers.map((offer: any, idx: number) => (
+                          <div key={idx} className="flex items-center justify-between text-[11px] text-slate-600">
+                            <span>• <strong>{offer.volunteer?.name || 'Volunteer'}</strong>: "{offer.message}"</span>
+                            <span className="font-bold text-slate-500 uppercase">{offer.status}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </GlassCard>
+        </div>
+      )}
+
+      {/* Resources & Bookings Tab */}
+      {activeTab === 'RESOURCES' && (
+        <div className="space-y-6">
+          {/* Listings */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-bold text-slate-900">Physical Resource Listings ({adminResources.length})</h3>
+            <GlassCard className="p-0 overflow-hidden">
+              <div className="divide-y divide-slate-100">
+                {adminResources.map((res) => (
+                  <div key={res._id} className="p-4 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-900">{res.name}</span>
+                        <Badge status={res.status} size="sm" />
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${res.isActive !== false ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+                          {res.isActive !== false ? 'ACTIVE' : 'DEACTIVATED'}
+                        </span>
+                      </div>
+                      <div className="text-slate-500 mt-1">
+                        Owner: <strong>{res.owner?.name}</strong> • Category: {res.category} • Location: {res.location?.locality || res.locationZone}
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="font-bold text-blue-700">{res.creditPrice} Credits/day</div>
+                      <div className="text-[11px] text-slate-400">{res.availability}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </GlassCard>
+          </div>
+
+          {/* Bookings */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-bold text-slate-900">Resource Bookings & Loans ({adminBookings.length})</h3>
+            <GlassCard className="p-0 overflow-hidden">
+              <div className="divide-y divide-slate-100">
+                {adminBookings.length === 0 ? (
+                  <div className="p-8 text-center text-xs text-slate-400">No resource bookings recorded</div>
+                ) : (
+                  adminBookings.map((b) => (
+                    <div key={b._id} className="p-4 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-900">{b.resource?.name}</span>
+                          <Badge status={b.status} size="sm" />
+                          {b.isGoodwill && (
+                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                              Goodwill Loan
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-slate-500 mt-1">
+                          Borrower: <strong>{b.borrower?.name}</strong> → Owner: <strong>{b.owner?.name}</strong> • {b.days} days ({b.totalPrice} Credits)
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0 text-slate-400">
+                        {b.startDate ? new Date(b.startDate).toLocaleDateString() : 'N/A'} – {b.endDate ? new Date(b.endDate).toLocaleDateString() : 'N/A'}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </GlassCard>
+          </div>
+        </div>
+      )}
+
+      {/* Transactions Ledger & Payments Tab */}
+      {activeTab === 'TRANSACTIONS' && (
+        <div className="space-y-6">
+          <div className="space-y-3">
+            <h3 className="text-sm font-bold text-slate-900">Community Two-Tier Credit Ledger ({adminTransactions.length})</h3>
+            <GlassCard className="p-0 overflow-hidden">
+              <div className="divide-y divide-slate-100">
+                {adminTransactions.length === 0 ? (
+                  <div className="p-8 text-center text-xs text-slate-400">No ledger transactions recorded</div>
+                ) : (
+                  adminTransactions.map((tx) => (
+                    <div key={tx._id} className="p-4 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-900">{tx.type}</span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${tx.creditType === 'GOODWILL' ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'}`}>
+                            {tx.creditType} CREDITS
+                          </span>
+                          <Badge status={tx.status} size="sm" />
+                        </div>
+                        <div className="text-slate-600 mt-1">
+                          User: <strong>{tx.user?.name || tx.user}</strong> • {tx.description}
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className={`font-bold text-sm ${tx.amount >= 0 ? 'text-emerald-700' : 'text-slate-800'}`}>
+                          {tx.amount >= 0 ? `+${tx.amount}` : tx.amount} Credits
+                        </div>
+                        <div className="text-[10px] text-slate-400">
+                          {new Date(tx.createdAt).toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </GlassCard>
+          </div>
+
+          <div className="space-y-3">
+            <h3 className="text-sm font-bold text-slate-900">Demo Checkout Payments ({adminPayments.length})</h3>
+            <GlassCard className="p-0 overflow-hidden">
+              <div className="divide-y divide-slate-100">
+                {adminPayments.length === 0 ? (
+                  <div className="p-8 text-center text-xs text-slate-400">No demo payments processed</div>
+                ) : (
+                  adminPayments.map((p) => (
+                    <div key={p._id} className="p-4 text-xs flex items-center justify-between">
+                      <div>
+                        <span className="font-bold text-slate-900">{p.user?.name || 'User'}</span>
+                        <div className="text-slate-500">Ref: {p.transactionReference}</div>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-bold text-emerald-600">+{p.creditsIssued} Credits</span>
+                        <div className="text-[11px] text-slate-400">${p.amountPaidUSD} USD</div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </GlassCard>
+          </div>
+        </div>
+      )}
       <Modal
         isOpen={isAdjustModalOpen}
         onClose={() => setIsAdjustModalOpen(false)}

@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = 'http://localhost:8000/api';
 
 export class ApiError extends Error {
   status: number;
@@ -83,12 +83,58 @@ export const api = {
       apiRequest<{ success: boolean; message: string }>(`/assistance/${id}/apply`, {
         method: 'POST',
       }),
+    submitOffer: (id: string, data: { message: string; proposedTime?: string }) =>
+      apiRequest<{ success: boolean; message: string; request: any }>(
+        `/assistance/${id}/offers`,
+        {
+          method: 'POST',
+          body: JSON.stringify(data),
+        }
+      ),
+    withdrawOffer: (id: string) =>
+      apiRequest<{ success: boolean; message: string; request: any }>(
+        `/assistance/${id}/offers`,
+        {
+          method: 'DELETE',
+        }
+      ),
+    acceptOffer: (id: string, data: { offerId?: string; contributorId: string }) =>
+      apiRequest<{ success: boolean; message: string; request: any }>(
+        `/assistance/${id}/offers/accept`,
+        {
+          method: 'POST',
+          body: JSON.stringify(data),
+        }
+      ),
+    rejectOffer: (id: string, data: { offerId?: string; contributorId: string }) =>
+      apiRequest<{ success: boolean; message: string; request: any }>(
+        `/assistance/${id}/offers/reject`,
+        {
+          method: 'POST',
+          body: JSON.stringify(data),
+        }
+      ),
     selectContributor: (id: string, contributorId: string) =>
       apiRequest<{ success: boolean; message: string; request: any }>(
         `/assistance/${id}/select-contributor`,
         {
           method: 'POST',
           body: JSON.stringify({ contributorId }),
+        }
+      ),
+    startTask: (id: string) =>
+      apiRequest<{ success: boolean; message: string; request: any }>(
+        `/assistance/${id}/start`,
+        {
+          method: 'POST',
+        }
+      ),
+    completeTask: (id: string, completionNotes?: string) =>
+      apiRequest<{ success: boolean; message: string; request: any }>(
+        `/assistance/${id}/complete`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ completionNotes }),
         }
       ),
     updateStatus: (id: string, status: string, completionNotes?: string) =>
@@ -106,6 +152,22 @@ export const api = {
           method: 'POST',
         }
       ),
+    cancel: (id: string, reason?: string) =>
+      apiRequest<{ success: boolean; message: string; request: any }>(
+        `/assistance/${id}/cancel`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ reason }),
+        }
+      ),
+    dispute: (id: string, data: { reason: string }) =>
+      apiRequest<{ success: boolean; message: string; request: any }>(
+        `/assistance/${id}/dispute`,
+        {
+          method: 'POST',
+          body: JSON.stringify(data),
+        }
+      ),
   },
 
   resources: {
@@ -120,6 +182,22 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data),
       }),
+    update: (id: string, data: any) =>
+      apiRequest<{ success: boolean; resource: any; message: string }>(`/resources/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+    toggleStatus: (id: string) =>
+      apiRequest<{ success: boolean; resource: any; message: string }>(
+        `/resources/${id}/toggle-status`,
+        {
+          method: 'PATCH',
+        }
+      ),
+    getMyListings: () =>
+      apiRequest<{ success: boolean; resources: any[] }>('/resources/my/listings'),
+    getMyRequests: () =>
+      apiRequest<{ success: boolean; requests: any[] }>('/resources/my/requests'),
     requestResource: (id: string, data: any) =>
       apiRequest<{ success: boolean; resourceRequest: any; message: string }>(
         `/resources/${id}/request`,
@@ -149,6 +227,22 @@ export const api = {
         `/resources/requests/${requestId}/verify-return`,
         {
           method: 'POST',
+        }
+      ),
+    cancelRequest: (requestId: string, reason?: string) =>
+      apiRequest<{ success: boolean; message: string }>(
+        `/resources/requests/${requestId}/cancel`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ reason }),
+        }
+      ),
+    dispute: (requestId: string, data: { reason: string }) =>
+      apiRequest<{ success: boolean; message: string }>(
+        `/resources/requests/${requestId}/dispute`,
+        {
+          method: 'POST',
+          body: JSON.stringify(data),
         }
       ),
   },
@@ -280,5 +374,15 @@ export const api = {
       apiRequest<{ success: boolean; transactions: any[] }>(
         '/admin/goodwill-transactions'
       ),
+    getResourceBookings: () =>
+      apiRequest<{ success: boolean; bookings: any[] }>('/admin/resource-bookings'),
+    getContributions: () =>
+      apiRequest<{ success: boolean; contributions: any[] }>('/admin/contributions'),
+    getAllTransactions: (params?: Record<string, string>) => {
+      const query = new URLSearchParams(params).toString();
+      return apiRequest<{ success: boolean; transactions: any[] }>(`/admin/transactions?${query}`);
+    },
+    getPayments: () =>
+      apiRequest<{ success: boolean; payments: any[] }>('/admin/payments'),
   },
 };

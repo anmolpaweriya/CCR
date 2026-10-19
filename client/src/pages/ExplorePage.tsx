@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
+import { ExploreMapView, MapItem } from '../components/location/ExploreMapView';
 import {
   Search,
   Compass,
@@ -15,11 +16,14 @@ import {
   Heart,
   Coins,
   ArrowRight,
+  Map as MapIcon,
+  LayoutGrid,
 } from 'lucide-react';
 
 export const ExplorePage: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'ALL' | 'ASSISTANCE' | 'RESOURCES'>('ALL');
+  const [viewMode, setViewMode] = useState<'GRID' | 'MAP'>('GRID');
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
   const [urgency, setUrgency] = useState('All');
@@ -121,46 +125,112 @@ export const ExplorePage: React.FC = () => {
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex items-center gap-2 pt-2 border-t border-slate-200/60">
-          <button
-            onClick={() => setActiveTab('ALL')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-              activeTab === 'ALL'
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'bg-white/60 text-slate-600 hover:bg-white'
-            }`}
-          >
-            All Items ({assistanceList.length + resourcesList.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('ASSISTANCE')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
-              activeTab === 'ASSISTANCE'
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'bg-white/60 text-slate-600 hover:bg-white'
-            }`}
-          >
-            <HandHelping className="w-3.5 h-3.5" />
-            <span>Assistance ({assistanceList.length})</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('RESOURCES')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
-              activeTab === 'RESOURCES'
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'bg-white/60 text-slate-600 hover:bg-white'
-            }`}
-          >
-            <Package className="w-3.5 h-3.5" />
-            <span>Physical Resources ({resourcesList.length})</span>
-          </button>
+        {/* Tabs & View Mode Switcher */}
+        <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setActiveTab('ALL')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                activeTab === 'ALL'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'bg-white/60 text-slate-600 hover:bg-white'
+              }`}
+            >
+              All Items ({assistanceList.length + resourcesList.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('ASSISTANCE')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                activeTab === 'ASSISTANCE'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'bg-white/60 text-slate-600 hover:bg-white'
+              }`}
+            >
+              <HandHelping className="w-3.5 h-3.5" />
+              <span>Assistance ({assistanceList.length})</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('RESOURCES')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                activeTab === 'RESOURCES'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'bg-white/60 text-slate-600 hover:bg-white'
+              }`}
+            >
+              <Package className="w-3.5 h-3.5" />
+              <span>Physical Resources ({resourcesList.length})</span>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200/60">
+            <button
+              onClick={() => setViewMode('GRID')}
+              className={`p-1.5 rounded-lg text-xs font-medium flex items-center gap-1 transition-all ${
+                viewMode === 'GRID'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-900'
+              }`}
+              title="Grid View"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Grid</span>
+            </button>
+            <button
+              onClick={() => setViewMode('MAP')}
+              className={`p-1.5 rounded-lg text-xs font-medium flex items-center gap-1 transition-all ${
+                viewMode === 'MAP'
+                  ? 'bg-white text-emerald-700 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-900'
+              }`}
+              title="Map View"
+            >
+              <MapIcon className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Map</span>
+            </button>
+          </div>
         </div>
       </GlassCard>
 
-      {/* Grid Results */}
+      {/* Map or Grid Results */}
       {loading ? (
         <div className="p-12 text-center text-sm text-slate-400">Loading community items...</div>
+      ) : viewMode === 'MAP' ? (
+        <ExploreMapView
+          items={[
+            ...(activeTab === 'ALL' || activeTab === 'ASSISTANCE'
+              ? assistanceList.map((item) => ({
+                  id: item._id,
+                  type: 'assistance' as const,
+                  title: item.title,
+                  category: item.category,
+                  coordinates: item.location?.coordinates || [
+                    item.locationCoordinates?.lng || -74.006,
+                    item.locationCoordinates?.lat || 40.7128,
+                  ],
+                  address: item.approximateLocation || item.location?.locality,
+                  credits: item.creditValue,
+                  creditType: item.requestType,
+                  isGoodwillEligible: item.requestType === 'GOODWILL',
+                }))
+              : []),
+            ...(activeTab === 'ALL' || activeTab === 'RESOURCES'
+              ? resourcesList.map((res) => ({
+                  id: res._id,
+                  type: 'resource' as const,
+                  title: res.name,
+                  category: res.category,
+                  coordinates: res.location?.coordinates || [
+                    res.locationCoordinates?.lng || -74.006,
+                    res.locationCoordinates?.lat || 40.7128,
+                  ],
+                  address: res.locationZone || res.location?.locality,
+                  credits: res.creditPrice,
+                  creditType: 'CASH',
+                  isGoodwillEligible: true,
+                }))
+              : []),
+          ]}
+        />
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Assistance Cards */}

@@ -7,6 +7,7 @@ import { GlassCard } from '../components/ui/GlassCard';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { GoodwillModal } from '../components/goodwill/GoodwillModal';
+import { GoogleMapDisplay } from '../components/location/GoogleMapDisplay';
 import {
   Package,
   Calendar,
@@ -19,6 +20,8 @@ import {
   ArrowLeft,
   Sparkles,
   AlertCircle,
+  ToggleLeft,
+  ToggleRight,
 } from 'lucide-react';
 import { Resource } from '../types';
 
@@ -30,6 +33,9 @@ export const ResourceDetailsPage: React.FC = () => {
 
   const [resource, setResource] = useState<Resource | null>(null);
   const [days, setDays] = useState<number>(1);
+  const [startDate, setStartDate] = useState<string>(
+    new Date(Date.now() + 86400000).toISOString().split('T')[0]
+  );
   const [message, setMessage] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -54,12 +60,33 @@ export const ResourceDetailsPage: React.FC = () => {
     loadResource();
   }, [id]);
 
+  const handleToggleStatus = async () => {
+    if (!id) return;
+    setActionLoading(true);
+    try {
+      const res = await api.resources.toggleStatus(id);
+      if (res.success) {
+        showToast(res.message, 'success');
+        await loadResource();
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Failed to toggle status', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleBorrowStandard = async () => {
     if (!id || !resource) return;
     setActionLoading(true);
     try {
+      const sDate = new Date(startDate);
+      const eDate = new Date(sDate.getTime() + days * 86400000);
+
       const res = await api.resources.requestResource(id, {
         days,
+        startDate: sDate.toISOString(),
+        endDate: eDate.toISOString(),
         isGoodwill: false,
         message,
       });
@@ -80,8 +107,13 @@ export const ResourceDetailsPage: React.FC = () => {
     if (!id || !resource) return;
     setActionLoading(true);
     try {
+      const sDate = new Date(startDate);
+      const eDate = new Date(sDate.getTime() + days * 86400000);
+
       const res = await api.resources.requestResource(id, {
         days,
+        startDate: sDate.toISOString(),
+        endDate: eDate.toISOString(),
         isGoodwill: true,
         message,
       });
@@ -196,7 +228,7 @@ export const ResourceDetailsPage: React.FC = () => {
                 <span className="text-slate-400 block mb-0.5">Location Zone</span>
                 <span className="font-semibold text-slate-800 flex items-center gap-1">
                   <MapPin className="w-3.5 h-3.5 text-slate-500" />
-                  {resource.locationZone}
+                  {resource.location?.locality || resource.locationZone}
                 </span>
               </div>
 
@@ -209,42 +241,98 @@ export const ResourceDetailsPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Owner Info */}
-            <div className="pt-4 border-t border-slate-100 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-sm">
-                {resource.owner?.name?.charAt(0) || 'O'}
+            {/* Google Map Section */}
+            {(resource.location?.coordinates || (resource as any).locationCoordinates) && (
+              <div className="space-y-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  {isOwner ? 'Pickup Location (Owner View)' : 'Approximate Pickup Vicinity'}
+                </span>
+                <GoogleMapDisplay
+                  coordinates={
+                    resource.location?.coordinates || [
+                      (resource as any).locationCoordinates.lng,
+                      (resource as any).locationCoordinates.lat,
+                    ]
+                  }
+                  address={isOwner ? resource.location?.address : resource.location?.locality || resource.locationZone}
+                  isApproximate={!isOwner}
+                  title={resource.name}
+                  height="h-44"
+                />
               </div>
-              <div>
-                <div className="text-xs text-slate-400">Owner</div>
-                <div className="text-sm font-bold text-slate-900">{resource.owner?.name}</div>
-                <div className="text-[11px] text-emerald-700 font-semibold">
-                  {resource.owner?.reputationScore || 90}% Community Trust Rating
+            )}
+
+            {/* Owner Info */}
+            <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-sm">
+                  {resource.owner?.name?.charAt(0) || 'O'}
+                </div>
+                <div>
+                  <div className="text-xs text-slate-400">Owner</div>
+                  <div className="text-sm font-bold text-slate-900">{resource.owner?.name}</div>
+                  <div className="text-[11px] text-emerald-700 font-semibold">
+                    {resource.owner?.reputationScore || 90}% Community Trust Rating
+                  </div>
                 </div>
               </div>
+
+              {/* Owner Listing Management */}
+              {isOwner && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleToggleStatus}
+                    isLoading={actionLoading}
+                    leftIcon={resource.isActive !== false ? <ToggleRight className="w-4 h-4 text-emerald-600" /> : <ToggleLeft className="w-4 h-4 text-slate-400" />}
+                  >
+                    {resource.isActive !== false ? 'Active' : 'Deactivated'}
+                  </Button>
+                </div>
+              )}
             </div>
 
             {/* Borrow Action Box (If not owner and available) */}
             {!isOwner && resource.status === 'AVAILABLE' && (
               <div className="pt-4 border-t border-slate-100 space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
-                    How many days do you need this?
-                  </label>
-                  <div className="flex items-center gap-2">
-                    {[1, 2, 3, 5, 7].map((d) => (
-                      <button
-                        key={d}
-                        type="button"
-                        onClick={() => setDays(d)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
-                          days === d
-                            ? 'bg-slate-900 text-white border-slate-900'
-                            : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-                        }`}
-                      >
-                        {d} {d === 1 ? 'day' : 'days'}
-                      </button>
-                    ))}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
+                      Starting Date
+                    </label>
+                    <div className="relative">
+                      <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                      <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-300 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
+                      Borrow Duration
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      {[1, 2, 3, 5, 7].map((d) => (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => setDays(d)}
+                          className={`flex-1 py-2 rounded-xl text-xs font-semibold border transition-all ${
+                            days === d
+                              ? 'bg-slate-900 text-white border-slate-900'
+                              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                          }`}
+                        >
+                          {d}d
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 

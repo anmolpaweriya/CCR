@@ -5,6 +5,8 @@ import { api } from '../api/client';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
+import { GoogleMapPicker } from '../components/location/GoogleMapPicker';
+import { ILocationData } from '../types';
 import {
   User,
   Award,
@@ -25,6 +27,13 @@ export const ProfilePage: React.FC = () => {
   const [name, setName] = useState(user?.name || '');
   const [phone, setPhone] = useState(user?.phone || '');
   const [locationZone, setLocationZone] = useState(user?.locationZone || 'Greenwood District');
+  const [locationData, setLocationData] = useState<ILocationData>({
+    type: 'Point',
+    coordinates: user?.location?.coordinates || [-74.006, 40.7128],
+    address: user?.location?.address || user?.locationZone || 'Greenwood District, Downtown Area',
+    locality: user?.location?.locality || user?.locationZone || 'Greenwood District',
+    city: user?.location?.city || 'New York',
+  });
   const [availability, setAvailability] = useState(user?.availability || 'Flexible');
   const [skills, setSkills] = useState((user?.skills || []).join(', '));
   const [interests, setInterests] = useState((user?.interests || []).join(', '));
@@ -47,7 +56,8 @@ export const ProfilePage: React.FC = () => {
       const res = await api.user.updateProfile({
         name,
         phone,
-        locationZone,
+        location: locationData,
+        locationZone: locationData.locality || locationData.city || locationZone,
         availability,
         skills: skillsArray,
         interests: interestsArray,
@@ -161,24 +171,36 @@ export const ProfilePage: React.FC = () => {
             </div>
           </div>
 
+          {/* Primary Service Area / Neighborhood Map */}
+          <div className="p-4 rounded-2xl bg-slate-900/95 border border-slate-800 text-white shadow-inner">
+            <GoogleMapPicker
+              value={locationData}
+              onChange={(loc) => {
+                setLocationData(loc);
+                if (loc.locality || loc.city || loc.address) {
+                  setLocationZone(loc.locality || loc.city || loc.address || '');
+                }
+              }}
+              label="Primary Service Area & Neighborhood"
+              placeholder="Search your neighborhood, district or area..."
+            />
+            <p className="text-[11px] text-slate-400 mt-2">
+              🔒 Privacy Protected: CCR uses your coordinates only to calculate proximity for volunteer matching. Your exact address is never displayed on public profile cards.
+            </p>
+          </div>
+
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
-                Locality Zone
+                Locality / District Name
               </label>
-              <select
+              <input
+                type="text"
                 value={locationZone}
                 onChange={(e) => setLocationZone(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl glass-input text-xs font-semibold"
-              >
-                <option value="Greenwood District">Greenwood District</option>
-                <option value="Central District">Central District</option>
-                <option value="Riverside North">Riverside North</option>
-                <option value="South Meadows">South Meadows</option>
-                <option value="Tech Corridor">Tech Corridor</option>
-                <option value="University Heights">University Heights</option>
-                <option value="Industrial Fringe">Industrial Fringe</option>
-              </select>
+                required
+              />
             </div>
 
             <div>

@@ -5,6 +5,8 @@ import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
+import { GoogleMapPicker } from '../components/location/GoogleMapPicker';
+import { ILocationData } from '../types';
 import { PackagePlus, Sparkles, MapPin, Image as ImageIcon } from 'lucide-react';
 
 export const CreateResourcePage: React.FC = () => {
@@ -19,6 +21,13 @@ export const CreateResourcePage: React.FC = () => {
   const [condition, setCondition] = useState<'LIKE_NEW' | 'EXCELLENT' | 'GOOD' | 'FAIR'>('EXCELLENT');
   const [availability, setAvailability] = useState<'IMMEDIATE' | 'WEEKDAYS' | 'WEEKENDS' | 'UPON_REQUEST'>('IMMEDIATE');
   const [locationZone, setLocationZone] = useState(user?.locationZone || 'Greenwood District');
+  const [locationData, setLocationData] = useState<ILocationData>({
+    type: 'Point',
+    coordinates: [-74.006, 40.7128],
+    address: user?.locationZone || 'Greenwood District, Downtown Area',
+    locality: user?.locationZone || 'Greenwood District',
+    city: 'New York',
+  });
   const [creditPrice, setCreditPrice] = useState<number>(10);
   const [rules, setRules] = useState('Handle with care, Return clean and charged');
   const [isLoading, setIsLoading] = useState(false);
@@ -57,7 +66,8 @@ export const CreateResourcePage: React.FC = () => {
         images: imagesArray,
         condition,
         availability,
-        locationZone,
+        location: locationData,
+        locationZone: locationData.locality || locationData.city || locationZone,
         creditPrice,
         rules: rulesArray,
       });
@@ -193,21 +203,22 @@ export const CreateResourcePage: React.FC = () => {
               </select>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
-                Location Zone
-              </label>
-              <div className="relative">
-                <MapPin className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                <input
-                  type="text"
-                  value={locationZone}
-                  onChange={(e) => setLocationZone(e.target.value)}
-                  className="w-full pl-10 pr-3.5 py-2.5 rounded-xl glass-input text-sm text-slate-900"
-                  required
-                />
-              </div>
-            </div>
+          </div>
+
+          {/* Pickup & Meeting Location via Google Maps */}
+          <div className="p-4 rounded-2xl bg-slate-900/95 border border-slate-800 text-white shadow-inner">
+            <GoogleMapPicker
+              value={locationData}
+              onChange={(loc) => {
+                setLocationData(loc);
+                if (loc.locality || loc.city || loc.address) {
+                  setLocationZone(loc.locality || loc.city || loc.address || '');
+                }
+              }}
+              label="Resource Pickup Location"
+              placeholder="Search pickup address, cross-streets or public meeting spot..."
+              required
+            />
           </div>
 
           {/* Pricing & AI recommendation */}

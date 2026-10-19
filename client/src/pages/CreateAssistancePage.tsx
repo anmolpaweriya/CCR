@@ -7,6 +7,9 @@ import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { AIExplainerBadge } from '../components/ai/AIExplainerBadge';
+import { TimeWindowPicker, formatDisplayTime } from '../components/ui/TimeWindowPicker';
+import { GoogleMapPicker } from '../components/location/GoogleMapPicker';
+import { ITimeWindow, ILocationData } from '../types';
 import {
   HandHelping,
   ArrowRight,
@@ -35,10 +38,17 @@ export const CreateAssistancePage: React.FC = () => {
   const [preferredDate, setPreferredDate] = useState(
     new Date(Date.now() + 86400000).toISOString().split('T')[0]
   );
-  const [preferredTime, setPreferredTime] = useState('Afternoon');
-  const [approximateLocation, setApproximateLocation] = useState(
-    user?.locationZone || 'Greenwood District'
-  );
+  const [preferredTimeWindow, setPreferredTimeWindow] = useState<ITimeWindow>({
+    startTime: '09:00',
+    endTime: '12:00',
+  });
+  const [locationData, setLocationData] = useState<ILocationData>({
+    type: 'Point',
+    coordinates: [-74.006, 40.7128],
+    address: user?.locationZone || 'Greenwood District, Downtown Area',
+    city: 'New York',
+    locality: user?.locationZone || 'Greenwood District',
+  });
   const [requestType, setRequestType] = useState<'STANDARD' | 'GOODWILL'>('STANDARD');
   const [creditValue, setCreditValue] = useState<number>(10);
   const [aiValuation, setAiValuation] = useState<{
@@ -87,7 +97,25 @@ export const CreateAssistancePage: React.FC = () => {
       showToast('Please provide some details for your request.', 'error');
       return;
     }
+    if (step === 3) {
+      if (!preferredDate) {
+        showToast('Please select a preferred date.', 'error');
+        return;
+      }
+      if (!preferredTimeWindow.startTime || !preferredTimeWindow.endTime) {
+        showToast('Please select both a start time and an end time.', 'error');
+        return;
+      }
+      if (preferredTimeWindow.endTime <= preferredTimeWindow.startTime) {
+        showToast('End time must be later than start time.', 'error');
+        return;
+      }
+    }
     if (step === 4) {
+      if (!locationData.coordinates || locationData.coordinates.length < 2) {
+        showToast('Please select a valid location on the map.', 'error');
+        return;
+      }
       await fetchValuation();
     }
     setStep((prev) => prev + 1);
@@ -113,8 +141,10 @@ export const CreateAssistancePage: React.FC = () => {
         estimatedDuration,
         urgency,
         preferredDate,
-        preferredTime,
-        approximateLocation,
+        preferredTimeWindow,
+        preferredTime: `${formatDisplayTime(preferredTimeWindow.startTime)} - ${formatDisplayTime(preferredTimeWindow.endTime)}`,
+        location: locationData,
+        approximateLocation: locationData.locality || locationData.city || locationData.address,
         creditValue,
         requestType,
       });
@@ -303,39 +333,29 @@ export const CreateAssistancePage: React.FC = () => {
               <h2 className="text-xl font-bold text-slate-900 mt-1">When is this needed?</h2>
             </div>
 
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
-                  Preferred Date
-                </label>
-                <div className="relative">
-                  <Calendar className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                  <input
-                    type="date"
-                    value={preferredDate}
-                    onChange={(e) => setPreferredDate(e.target.value)}
-                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl glass-input text-sm text-slate-900"
-                    required
-                  />
-                </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
+                Preferred Date
+              </label>
+              <div className="relative">
+                <Calendar className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                <input
+                  type="date"
+                  value={preferredDate}
+                  onChange={(e) => setPreferredDate(e.target.value)}
+                  className="w-full pl-10 pr-3.5 py-2.5 rounded-xl glass-input text-sm text-slate-900"
+                  required
+                />
               </div>
+            </div>
 
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
-                  Preferred Time Window
-                </label>
-                <div className="relative">
-                  <Clock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                  <input
-                    type="text"
-                    value={preferredTime}
-                    onChange={(e) => setPreferredTime(e.target.value)}
-                    placeholder="e.g. Saturday Morning, 5:00 PM"
-                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl glass-input text-sm text-slate-900"
-                    required
-                  />
-                </div>
-              </div>
+            {/* Time Window Picker */}
+            <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 text-white shadow-inner">
+              <TimeWindowPicker
+                value={preferredTimeWindow}
+                onChange={setPreferredTimeWindow}
+                required
+              />
             </div>
 
             <div>
@@ -369,30 +389,24 @@ export const CreateAssistancePage: React.FC = () => {
               <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider">
                 Step 4 of 6
               </span>
-              <h2 className="text-xl font-bold text-slate-900 mt-1">Approximate Location</h2>
+              <h2 className="text-xl font-bold text-slate-900 mt-1">Task Location & Service Area</h2>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
-                Locality / Zone (Approximate)
-              </label>
-              <div className="relative">
-                <MapPin className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                <input
-                  type="text"
-                  value={approximateLocation}
-                  onChange={(e) => setApproximateLocation(e.target.value)}
-                  placeholder="e.g. Greenwood District (approx. 0.8 km)"
-                  className="w-full pl-10 pr-3.5 py-2.5 rounded-xl glass-input text-sm text-slate-900"
-                  required
-                />
-              </div>
-              <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
-                🔒 <strong>Privacy Guarantee:</strong> CCR never discloses your exact residential
-                address publicly. Contributor candidates only see your neighborhood zone and
-                approximate distance.
-              </p>
+            <div className="p-4 rounded-2xl bg-slate-900/95 border border-slate-800 text-white shadow-inner">
+              <GoogleMapPicker
+                value={locationData}
+                onChange={setLocationData}
+                label="Task Location"
+                placeholder="Search address, neighborhood or landmark..."
+                required
+              />
             </div>
+
+            <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
+              🔒 <strong>Privacy Guarantee:</strong> CCR keeps your exact address confidential during
+              browsing and discovery. Nearby volunteers only see your neighborhood zone and approximate
+              distance. Full address is shared only after you accept a volunteer's offer.
+            </p>
           </div>
         )}
 
@@ -503,12 +517,14 @@ export const CreateAssistancePage: React.FC = () => {
               <div className="flex justify-between pb-2 border-b border-slate-200/60">
                 <span className="text-slate-500">When:</span>
                 <span className="font-semibold text-slate-800">
-                  {preferredDate} ({preferredTime})
+                  {preferredDate} ({formatDisplayTime(preferredTimeWindow.startTime)} – {formatDisplayTime(preferredTimeWindow.endTime)})
                 </span>
               </div>
               <div className="flex justify-between pb-2 border-b border-slate-200/60">
-                <span className="text-slate-500">Approximate Area:</span>
-                <span className="font-semibold text-slate-800">{approximateLocation}</span>
+                <span className="text-slate-500">Location:</span>
+                <span className="font-semibold text-slate-800">
+                  {locationData.address || locationData.locality || locationData.city}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Valuation:</span>
